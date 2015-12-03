@@ -8,7 +8,7 @@ all_social_networks = ('instagram',)
 
 profile_attributes = ["username", "user_id", "name", "num_posts", 
                       "num_follows", "num_followers", "link",
-                      "description", "website", "location"]
+                      "description", "website"]
 
 int_attrs = ["user_id", "num_posts", "num_follows", "num_followers"]
 

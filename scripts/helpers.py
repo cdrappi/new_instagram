@@ -25,12 +25,16 @@ def load_csv(filename):
             cols_to_data.append(temp_row)
     return cols_to_data, header
 
-def write_csv(filename, data_list, header):
-    with open(filename+".csv", "w") as f:
+def write_csv(filename, data_list, header, write_type="w", sort=None, sort_rev=False):
+    filename_csv = filename+".csv"
+    with open(filename_csv, write_type) as f:
         writer = csv.writer(f)
-        writer.writerow(header)
+        if write_type == "w" or ((not os.path.isfile(filename_csv)) or os.path.getsize(filename_csv) == 0):
+            writer.writerow(header)
+        if sort:
+            data_list = sorted(data_list, key=lambda k: sort_by_list(k, sort), reverse=sort_rev)
         for row_dict in data_list:
-            writer.writerow([row_dict[h] for h in header])
+            writer.writerow([row_dict[h] if h in row_dict else "" for h in header])
     return None
 
 def list_of_keys(d, key):

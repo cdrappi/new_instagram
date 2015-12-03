@@ -1,10 +1,10 @@
 # main.py
-import time, httplib2, urllib2, random
+import sys, time, httplib2, urllib2, random
 import configs, helpers, dirs, credentials
 import social_apis
 
-def flush_followed_user(api, network, fid, influencers):
-    if fid in helpers.list_of_keys(influencers, "user_id"):
+def flush_followed_user(api, network, fid, influencer_user_ids):
+    if fid in influencer_user_ids:
         print("-"*100)
         print("we already have the user id: "+str(fid))
         print("-"*100)
@@ -25,6 +25,7 @@ def flush_followed_user(api, network, fid, influencers):
 def discover_network(network, api_list):
     # """ first, load all of the previous influencers and relationships """
     influencers, infl_header = helpers.load_csv(dirs.dirs_dict["discoveries"][network])
+    influencer_user_ids      = set(helpers.list_of_keys(influencers, 'user_id'))
     # print(influencers)
     relationships_loaded, rel_header = helpers.load_csv(dirs.dirs_dict["relationships"][network])
     # """ next, check which users we've already searched """
@@ -35,31 +36,35 @@ def discover_network(network, api_list):
 
     # """ while there are influencers to search, we should search one of them """
     while len(influencers_to_search) > 0:
-        try:
-            infl = max(influencers_to_search, key=helpers.influencer_norm)
-            print("chose: " + str(infl))
+        # try:
+        infl = max(influencers_to_search, key=helpers.influencer_norm)
+        print("chose: " + str(infl))
+        
+        follows = random.choice(api_list).get_follows(infl["user_id"])
+        print("this person follows: " + str(follows))
+        
+        profile = social_apis.Profile(network, infl, follows_list=follows)
+        relationships_loaded.extend(profile.get_follows())
+        profile.flush_follows()
+        influencers_to_search.remove(infl)
+        
+        for fid in follows:
+            flushed_dict = flush_followed_user(random.choice(api_list), network, fid, influencer_user_ids)
+            if not flushed_dict:
+                continue
+            influencers.append(flushed_dict)
+            influencer_user_ids.add(flushed_dict['user_id'])
             
-            follows = random.choice(api_list).get_follows(infl["user_id"])
-            print("this person follows: " + str(follows))
-            
-            profile = social_apis.Profile(network, infl, follows_list=follows)
-            relationships_loaded.extend(profile.get_follows())
-            profile.flush_follows()
-            influencers_to_search.remove(infl)
-            
-            for fid in follows:
-                flushed_dict = flush_followed_user(random.choice(api_list), network, fid, influencers)
-                if not flushed_dict:
-                    continue
-                influencers.append(flushed_dict)
-                influencers_to_search.append(flushed_dict)
+            influencers_to_search.append(flushed_dict)
 
-        except:
-            print("An error occured - onto the next one")
+        # except:
+        #     print("An error occured - onto the next one")
     return None
 
 
 def discover():
+    """ after running seed, this will find new people
+        that the seed users follow """
     api_dict = {
                 "instagram": [social_apis.Instagram(i) for i in range(len(credentials.instagram_credentials))], 
                 }
@@ -69,6 +74,9 @@ def discover():
 
 def dedup(folder, network, on_keys):
     rows, header = helpers.load_csv(dirs.dirs_dict[folder][network])
+    if not rows:
+        return
+
     stored_keys = set()
     new_rows = list()
     for row in rows:
@@ -80,21 +88,50 @@ def dedup(folder, network, on_keys):
     return None
 
 def seed():
+    # """ to get information of the seed users.
+    #     these are stored in configs.seed_users;
+    #     right now it contains the initial
+    #     list Brandon sent over a while ago.
+    # """
     usernames = configs.seed_users
     insta_api = social_apis.Instagram(0)
     for username in usernames:
         user = insta_api.get_user(username)
         user_info = insta_api.get_user_data_dict(user)
         if user_info:
-            follows_list = insta_api.get_follows(user_info["user_id"])
             profile = social_apis.Profile("instagram", user_info)
             profile.flush_info("discoveries")
     return None
 
+def dedup_discoveries():
+    """ if you want to remove duplicate items from the list of people """
+
+    dedup("discoveries", "instagram", ["user_id",])
+    return
+
+def dedup_relationships():
+    """ if you want to remove duplicate items from the list of relationships """
+
+    dedup("relationships", "instagram", ["follower_id", "follows_id",])
+    return
+
+def sysargs_to_function(sa):
+    fn = sa[0]
+    args = sa[1:]
+    fn_call = fn + "(" + ",".join(args) + ")"
+    return fn_call
+
+def run_main():
+    if len(sys.argv) >= 2:
+        to_exec = sysargs_to_function(sys.argv[1:])
+        eval(to_exec)
+    else:
+        print("please enter a command to run")
+    return None
+
+
 if __name__ == "__main__":
-    discover()
-    # dedup("relationships", "instagram", ["follower_id", "follows_id"])
-    # seed()
+    run_main()
 
 
 

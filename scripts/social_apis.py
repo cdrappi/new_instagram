@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, csv, urllib2, json, random, datetime, requests, time
+import os, urllib2, json, random, datetime, requests, time
 import credentials, dirs, configs, helpers
 import twitter#, facebook
 from instagram.client import InstagramAPI
@@ -24,29 +24,28 @@ class Profile:
         return None
 
     def flush_info(self, subdir="profiles"):
-        filename = dirs.dirs_dict[subdir][self.network]+".csv"
+        filename = dirs.dirs_dict[subdir][self.network]
         header = ["time_pulled"] + configs.profile_attributes
-        with open(filename, "a+") as f:
-            writer = csv.writer(f)
-            if (not os.path.isfile(filename)) or os.path.getsize(filename) == 0:
-                writer.writerow(header)
-            profile_info = [self.time_pulled]
-            profile_info += [helpers.format_attr(getattr(self, a), a) for a in configs.profile_attributes]
-            writer.writerow(profile_info)
-        return {k: v for k,v in zip(header, profile_info)}
+
+        to_write = {a: helpers.format_attr(getattr(self, a), a) for a in header}
+        
+        helpers.write_csv(filename, [to_write,], header, write_type='a+')
+        
+        return to_write
 
     def flush_follows(self):
         header = ["follower_id", "follows_id", "time_written"]
         if not self.follows:
             return None
-        filename = dirs.dirs_dict["relationships"][self.network]+".csv"
-        with open(filename, "a+") as f:
-            writer = csv.writer(f)
-            if (not os.path.isfile(filename)) or os.path.getsize(filename) == 0:
-                writer.writerow(header)
-            all_follow_rows = self.get_follows()
-            for follows_dict in all_follow_rows:
-                writer.writerow([follows_dict[h] for h in header])
+        filename = dirs.dirs_dict["relationships"][self.network]
+        all_follow_rows = self.get_follows()
+        helpers.write_csv(filename, all_follow_rows, header, write_type='a+')
+        # with open(filename, "a+") as f:
+        #     writer = csv.writer(f)
+        #     if (not os.path.isfile(filename)) or os.path.getsize(filename) == 0:
+        #         writer.writerow(header)
+        #     for follows_dict in all_follow_rows:
+        #         writer.writerow([follows_dict[h] for h in header])
         return None
 
     def get_follows(self):
