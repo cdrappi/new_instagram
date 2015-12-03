@@ -60,8 +60,7 @@ def rank(graph, node):
         rank = rank + (d * trank)
         ranks.append(rank)
 
-def write_ranks(rks):
-    rks_dict = {user_id: rk for user_id, rk in rks}
+def write_ranks(rks_dict):
     discovery_list, discovery_header = helpers.load_csv(dirs.dirs_dict["discoveries"]["instagram"])
     for i in range(len(discovery_list)):
         discovery_list[i]["pagerank"] = rks_dict[discovery_list[i]["user_id"]]
@@ -77,8 +76,8 @@ if __name__ == '__main__':
     graph = utils.parse(filename, isDirected)
     p = PageRank(graph, isDirected)
     p.rank()
-
-    pageranks = list(p.ranks.iteritems())
+    
+    pageranks = {k: v for k, v in p.ranks.iteritems()}
     write_ranks(pageranks)
 
 
