@@ -1,18 +1,6 @@
-import csv, os
+import csv, os, unidecode
 import configs
 
-
-def cast_or_none(info, cast):
-    if not info:
-        return None
-    else:
-        return cast(info)
-
-def list_to_dict(l, key_by):
-    ret = dict()
-    for el in l:
-        ret[el[key_by]] = el
-    return ret
 
 def load_csv(filename):
     if not os.path.isfile(filename+".csv"):
@@ -45,41 +33,18 @@ def write_csv(filename, data_list, header):
             writer.writerow([row_dict[h] for h in header])
     return None
 
-def initialize_source_dict(value):
-    return {site: {outlet: value for outlet in configs.all_sites} for site in configs.all_sources}
-
-def levenshtein(word1,word2):
-    columns = len(word1)+1
-    rows = len(word2)+1
-    current_row = [0]
-    for column in range(1,columns):
-        current_row.append(current_row[column-1]+1)
-    for row in range(1,rows):
-        previous_row = current_row
-        current_row = [previous_row[0]+1]
-        for column in range(1,columns):
-            insert_cost = current_row[column-1]+1
-            delete_cost = previous_row[column]+1
-            if word1[column-1] != word2[row-1]:
-                replace_cost = previous_row[column-1]+1
-            else:                
-                replace_cost = previous_row[column-1]
-            current_row.append(min(insert_cost,delete_cost,replace_cost))
-    return current_row[-1]
-
 def list_of_keys(d, key):
     return [el[key] for el in d]
 
 def influencer_norm(infl):
     # this can be chosen in many different ways,
-    # but closest to some "magic follower count"
+    # but the person with the number of followers
+    # closest to some "magic follower count"
     # has worked well.
 
     # if the user is one of our seed users,
     # we choose them first.
-    if infl["username"] in ["cjbraz", "itsreallyken", "justinjedlica", 
-                            "judsonharmon", "chrisfawcettnyc", "fredrikeklundny", 
-                            "jordancarlyle30", "officialdaveywavey"]:
+    if infl["username"] in configs.seed_users:
         return 0
 
     if not infl["num_followers"]:
@@ -87,10 +52,7 @@ def influencer_norm(infl):
     
     return -1*abs(infl["num_followers"]-configs.magic_follower_count)
 
-
-def format_unicode(a):
-    if not isinstance(a, unicode):
-        return a
+def old_format_unicode(a):
     ret = []
     for letter in a:
         try:
@@ -99,6 +61,17 @@ def format_unicode(a):
             ascii_a = " "
         ret.append(ascii_a)
     return "".join(ret)
+
+def format_unicode(a):
+    try:
+        if not isinstance(a, unicode):
+            return a
+        else:
+            # unidecode converts any unicode string into ASCII
+            # i believe it even converts Chinese to pinyin and shit.
+            return unidecode.unidecode(a)
+    except:
+        return old_format_unicode(a)
 
 def format_attr(a, attr):
     formatted_a = format_unicode(a)

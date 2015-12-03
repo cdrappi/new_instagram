@@ -32,28 +32,30 @@ def discover_network(network, api_list):
     # """ we'll only search influencers who we haven't searched """
     influencers_to_search = [i for i in influencers if i["user_id"] and int(i["user_id"]) not in user_ids_searched]
     # print(influencers_to_search)
+
     # """ while there are influencers to search, we should search one of them """
     while len(influencers_to_search) > 0:
         try:
             infl = max(influencers_to_search, key=helpers.influencer_norm)
             print("chose: " + str(infl))
+            
             follows = random.choice(api_list).get_follows(infl["user_id"])
             print("this person follows: " + str(follows))
+            
             profile = social_apis.Profile(network, infl, follows_list=follows)
             relationships_loaded.extend(profile.get_follows())
             profile.flush_follows()
             influencers_to_search.remove(infl)
+            
             for fid in follows:
-                # try:
                 flushed_dict = flush_followed_user(random.choice(api_list), network, fid, influencers)
                 if not flushed_dict:
                     continue
                 influencers.append(flushed_dict)
                 influencers_to_search.append(flushed_dict)
-                # except:# httplib2.ServerNotFoundError:
-                    # print("they prob have weird characters")
-        except (urllib2.URLError, httplib2.ServerNotFoundError) as e:
-            print("some internet error")
+
+        except:
+            print("An error occured - onto the next one")
     return None
 
 
@@ -78,8 +80,7 @@ def dedup(folder, network, on_keys):
     return None
 
 def seed():
-    username_dict, header = helpers.load_csv(dirs.dirs_dict["discoveries"]["seed"])
-    usernames = helpers.list_of_keys(username_dict, "username")
+    usernames = configs.seed_users
     insta_api = social_apis.Instagram(0)
     for username in usernames:
         user = insta_api.get_user(username)
@@ -89,7 +90,6 @@ def seed():
             profile = social_apis.Profile("instagram", user_info)
             profile.flush_info("discoveries")
     return None
-
 
 if __name__ == "__main__":
     discover()
