@@ -36,29 +36,31 @@ def discover_network(network, api_list):
 
     # """ while there are influencers to search, we should search one of them """
     while len(influencers_to_search) > 0:
-        # try:
         infl = max(influencers_to_search, key=helpers.influencer_norm)
         print("chose: " + str(infl))
         
-        follows = random.choice(api_list).get_follows(infl["user_id"])
-        print("this person follows: " + str(follows))
+        try:
+            follows = random.choice(api_list).get_follows(infl["user_id"])
+            print("this person follows: " + str(follows))
+            
+            profile = social_apis.Profile(network, infl, follows_list=follows)
+            relationships_loaded.extend(profile.get_follows())
+            profile.flush_follows()
+            
+            for fid in follows:
+                flushed_dict = flush_followed_user(random.choice(api_list), network, fid, influencer_user_ids)
+                if not flushed_dict:
+                    continue
+                influencers.append(flushed_dict)
+                influencer_user_ids.add(flushed_dict['user_id'])
+                
+                influencers_to_search.append(flushed_dict)
+        except:
+            print("An error occured - onto the next one")
         
-        profile = social_apis.Profile(network, infl, follows_list=follows)
-        relationships_loaded.extend(profile.get_follows())
-        profile.flush_follows()
         influencers_to_search.remove(infl)
         
-        for fid in follows:
-            flushed_dict = flush_followed_user(random.choice(api_list), network, fid, influencer_user_ids)
-            if not flushed_dict:
-                continue
-            influencers.append(flushed_dict)
-            influencer_user_ids.add(flushed_dict['user_id'])
-            
-            influencers_to_search.append(flushed_dict)
-
-        # except:
-        #     print("An error occured - onto the next one")
+        
     return None
 
 
