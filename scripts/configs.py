@@ -1,7 +1,7 @@
 # configs.py
 import getpass
 
-magic_follower_count = 50000
+magic_follower_count = 10000
 
 all_outlets = ('instagram',)
 all_social_networks = ('instagram',)
