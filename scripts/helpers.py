@@ -37,6 +37,9 @@ def write_csv(filename, data_list, header, write_type="w", sort=None, sort_rev=F
             writer.writerow([row_dict[h] if h in row_dict else "" for h in header])
     return None
 
+def sort_by_list(k, sort):
+    return tuple(k[s] for s in sort)
+
 def list_of_keys(d, key):
     return [el[key] for el in d]
 
@@ -48,13 +51,13 @@ def influencer_norm(infl):
 
     # if the user is one of our seed users,
     # we choose them first.
-    if infl["username"] in configs.seed_users:
-        return 0
+
+    first_sort = (-1 * infl['degree'])
 
     if not infl["num_followers"]:
-        return -1*configs.magic_follower_count
+        return first_sort, -1*configs.magic_follower_count
     
-    return -1*abs(infl["num_followers"]-configs.magic_follower_count)
+    return first_sort, -1*abs(infl["num_followers"]-configs.magic_follower_count)
 
 def old_format_unicode(a):
     ret = []

@@ -6,9 +6,10 @@ from instagram.client import InstagramAPI
 
 
 class Profile:
-    def __init__(self, network, info_dict, follows_list=None):
+    def __init__(self, network, info_dict, degree, follows_list=None):
         self.network = network
         self.init_info(info_dict)
+        self.degree  = degree
         self.time_pulled = str(datetime.datetime.now())
         self.follows = follows_list
         return None
@@ -29,8 +30,11 @@ class Profile:
 
         to_write = {a: helpers.format_attr(getattr(self, a), a) for a in header}
         
+        if not (to_write['user_id'] and to_write['username']):
+            return
+
         helpers.write_csv(filename, [to_write,], header, write_type='a+')
-        
+
         return to_write
 
     def flush_follows(self):

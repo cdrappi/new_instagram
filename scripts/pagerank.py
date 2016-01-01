@@ -62,8 +62,11 @@ def rank(graph, node):
 
 def write_ranks(rks_dict):
     discovery_list, discovery_header = helpers.load_csv(dirs.dirs_dict["discoveries"]["instagram"])
-    for i in range(len(discovery_list)):
-        discovery_list[i]["pagerank"] = rks_dict[discovery_list[i]["user_id"]]
+    # fixes bug where some influencers are reported as None
+    discovery_list = filter(lambda infl: bool(infl['username']), discovery_list)
+
+    for i, el in enumerate(discovery_list):
+        discovery_list[i]["pagerank"] = rks_dict[el["user_id"]]
     discovery_header.append("pagerank")
     discovery_list.sort(key=lambda k: k["pagerank"], reverse=True)
     helpers.write_csv(dirs.dirs_dict["discoveries"]["instagram"]+"-pageranked", discovery_list, discovery_header)

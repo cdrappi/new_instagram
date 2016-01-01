@@ -1,22 +1,20 @@
 # main.py
-import sys, time, httplib2, urllib2, random
+import sys, time, random
 import configs, helpers, dirs, credentials
 import social_apis
 
-def flush_followed_user(api, network, fid, influencer_user_ids):
+def flush_followed_user(api, network, fid, influencer_user_ids, degree):
     if fid in influencer_user_ids:
         print("-"*100)
         print("we already have the user id: "+str(fid))
         print("-"*100)
         return None
-    # print(fid)
     new_user = api.get_user_by_id(fid)
     if not new_user:
         print("we couldn't get the user")
         return None
     new_user_info = api.get_user_data_dict(new_user)
-    new_ambassador_id = None
-    new_profile = social_apis.Profile(network, new_user_info, new_ambassador_id)
+    new_profile = social_apis.Profile(network, new_user_info, degree)
     flushed_dict = new_profile.flush_info("discoveries")
     print("flushed "+str(flushed_dict))
     return flushed_dict
@@ -31,24 +29,32 @@ def discover_network(network, api_list):
     # """ next, check which users we've already searched """
     user_ids_searched = set(int(rel["follower_id"]) for rel in relationships_loaded)
     # """ we'll only search influencers who we haven't searched """
-    influencers_to_search = [i for i in influencers if i["user_id"] and int(i["user_id"]) not in user_ids_searched]
+    influencers_to_search = filter(lambda i: i["user_id"] and int(i["user_id"]) not in user_ids_searched, influencers) # [i for i in influencers if i["user_id"] and int(i["user_id"]) not in user_ids_searched]
     # print(influencers_to_search)
 
     # """ while there are influencers to search, we should search one of them """
-    while len(influencers_to_search) > 0:
+    # only expand if the new degree is less than or equal
+    # to a maximum degree for expanding the network,
+    # so that we don't run into low quality people.
+    # if new_degree <= configs.MAX_EXPANSION_DEGREE:
+    while max(influencers_to_search, key=helpers.influencer_norm)['degree'] <= configs.MAX_EXPANSION_DEGREE:
         infl = max(influencers_to_search, key=helpers.influencer_norm)
         print("chose: " + str(infl))
+
+        # this holds true if we first exhaust all degree 0's
+        # and then go to degree 1s, 2s, etc.
+        new_degree = infl['degree'] + 1
         
         try:
             follows = random.choice(api_list).get_follows(infl["user_id"])
             print("this person follows: " + str(follows))
             
-            profile = social_apis.Profile(network, infl, follows_list=follows)
+            profile = social_apis.Profile(network, infl, infl['degree'], follows_list=follows)
             relationships_loaded.extend(profile.get_follows())
             profile.flush_follows()
             
             for fid in follows:
-                flushed_dict = flush_followed_user(random.choice(api_list), network, fid, influencer_user_ids)
+                flushed_dict = flush_followed_user(random.choice(api_list), network, fid, influencer_user_ids, new_degree)
                 if not flushed_dict:
                     continue
                 influencers.append(flushed_dict)
@@ -87,7 +93,18 @@ def dedup(folder, network, on_keys):
             new_rows.append(row)
             stored_keys.add(row_key)
     helpers.write_csv(dirs.dirs_dict[folder][network], new_rows, header)
-    return None
+    return
+
+def drop_nones():
+    rows, header = helpers.load_csv(dirs.dirs_dict["discoveries"]["instagram"])
+    
+    new_rows = list()
+    for row in rows:
+        if row['username'] and row['user_id']:
+            new_rows.append(row)
+    helpers.write_csv(dirs.dirs_dict["discoveries"]["instagram"], new_rows, header)
+
+    return
 
 def seed():
     # """ to get information of the seed users.
@@ -101,7 +118,7 @@ def seed():
         user = insta_api.get_user(username)
         user_info = insta_api.get_user_data_dict(user)
         if user_info:
-            profile = social_apis.Profile("instagram", user_info)
+            profile = social_apis.Profile("instagram", user_info, 0)
             profile.flush_info("discoveries")
     return None
 
